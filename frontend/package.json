@@ -1,0 +1,20 @@
+{
+  "name": "pathology-slide-agent-ui",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "format:check": "prettier --check src vite.config.js index.html"
+  },
+  "dependencies": {
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.0",
+    "prettier": "^3.9.8",
+    "vite": "^7.0.0"
+  }
+}

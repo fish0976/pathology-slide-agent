@@ -1,0 +1,13 @@
+services:
+  pathology:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - pathology-data:/app/data
+    environment:
+      MODEL_BACKEND: demo
+      MAX_UPLOAD_MB: 256
+    restart: unless-stopped
+volumes:
+  pathology-data:
