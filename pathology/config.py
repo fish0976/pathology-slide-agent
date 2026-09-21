@@ -12,6 +12,7 @@ class Settings:
     data_dir: Path
     model_backend: str = "demo"
     model_weights: str = "weights/model.pt"
+    foundation_base_path: str = ""
     max_upload_mb: int = 256
     llm_base_url: str = "https://api.deepseek.com"
     llm_model: str = "deepseek-flash"
@@ -36,6 +37,7 @@ class Settings:
             data_dir=Path(os.getenv("DATA_DIR", "data")),
             model_backend=os.getenv("MODEL_BACKEND", "demo"),
             model_weights=os.getenv("MODEL_WEIGHTS", "weights/model.pt"),
+            foundation_base_path=os.getenv("FOUNDATION_BASE_PATH", ""),
             max_upload_mb=int(os.getenv("MAX_UPLOAD_MB", "256")),
             llm_base_url=os.getenv("LLM_BASE_URL", cls.llm_base_url),
             llm_model=os.getenv("LLM_MODEL", cls.llm_model),

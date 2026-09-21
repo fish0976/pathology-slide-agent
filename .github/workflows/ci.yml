@@ -23,8 +23,8 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install torch --index-url https://download.pytorch.org/whl/cpu
-      - run: pip install -e '.[dev,wsi,integration]'
-      - run: python -m pytest tests/test_optional_integrations.py -q
+      - run: pip install -e '.[dev,wsi,integration,foundation]'
+      - run: python -m pytest tests/test_optional_integrations.py tests/test_foundation.py -q
   frontend:
     runs-on: ubuntu-latest
     defaults:

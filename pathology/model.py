@@ -51,4 +51,8 @@ def load_predictor(settings):
         return DemoPredictor()
     if settings.model_backend == "torch":
         return TorchPredictor(settings.model_weights)
-    raise ValueError("MODEL_BACKEND 仅支持 demo 或 torch。")
+    if settings.model_backend == "foundation":
+        from .foundation import FoundationPredictor
+
+        return FoundationPredictor(settings.model_weights, settings.foundation_base_path or None)
+    raise ValueError("MODEL_BACKEND 仅支持 demo、torch 或 foundation。")

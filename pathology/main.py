@@ -86,6 +86,39 @@ def create_app(settings=None):
     def jobs():
         return [{k: v for k, v in j.items() if k != "report"} for j in store.list()]
 
+    @app.get("/api/training")
+    def training():
+        if settings.model_backend != "foundation":
+            return {"state": "not_configured"}
+        folder = Path(settings.model_weights)
+        result = {"state": "not_started"}
+        allowed = {
+            "state",
+            "epoch",
+            "epochs",
+            "step",
+            "steps",
+            "optimizer_steps",
+            "loss",
+            "updated_at",
+            "base_model",
+            "method",
+            "parameters",
+            "samples",
+            "test",
+            "best_epoch",
+            "elapsed_seconds",
+        }
+        try:
+            for name in ("status.json", "metrics.json"):
+                source = folder / name
+                if source.is_file():
+                    values = json.loads(source.read_text(encoding="utf-8"))
+                    result.update({k: v for k, v in values.items() if k in allowed})
+        except (OSError, ValueError):
+            return {"state": "unavailable"}
+        return result
+
     @app.post("/api/demo", status_code=201)
     def demo():
         job_id = uuid.uuid4().hex

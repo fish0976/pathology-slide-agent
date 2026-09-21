@@ -1,5 +1,11 @@
 # Third-party data notices
 
+## DINOv2 vision foundation model
+
+The optional foundation backend uses Meta's [DINOv2](https://github.com/facebookresearch/dinov2), distributed as [facebook/dinov2-base](https://huggingface.co/facebook/dinov2-base), pinned to revision `f9e44c814b77203eaa57a6bdbbd535f21ede1415`. Upstream model weights are Apache-2.0 licensed and are downloaded separately; they are not relicensed as MIT or bundled in this Git repository. LoRA modifies the attention projections for a local pathology experiment. This does not imply endorsement by Meta.
+
+Oquab et al., *DINOv2: Learning Robust Visual Features without Supervision*, 2023. [Paper](https://arxiv.org/abs/2304.07193). [Upstream license](https://github.com/facebookresearch/dinov2/blob/main/LICENSE).
+
 ## PathMNIST image samples
 
 Scope: PNG files under `examples/pathmnist/images/` and their source labels/index records.

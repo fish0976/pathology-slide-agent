@@ -35,7 +35,7 @@ Windows 也可以运行仓库根目录的 `start.ps1`（首次会安装依赖并
 | 大切片处理 | 按金字塔层级和 level-0 坐标读图；最多 512 个采样图块；不展开整张 WSI |
 | 质控 | 组织占比、拉普拉斯清晰度、深色比例；启发式阈值，没有验证过的折叠/气泡分类器 |
 | 染色标准化 | 只对组织像素做 RGB 均值方差匹配；不是 Macenko/Reinhard 或经临床验证的算法 |
-| 模型接口 | 默认 DemoPredictor；可切换本地 PyTorch 小型 CNN 二分类基线，加载失败会报错 |
+| 模型接口 | 默认 DemoPredictor；支持小型 CNN 与 DINOv2 视觉基础模型 LoRA 微调，加载失败会报错 |
 | 分析工作流 | 读取、质控、切块推理、热力图、报告五步执行轨迹；有界任务队列、进度与错误状态 |
 | 区域证据 | 透明热力图叠加、研究分数排序、原始坐标定位；未采样区域不着色 |
 | 报告 | 包含模式、采样覆盖、参数、指标、区域、局限及工具轨迹的 JSON / Markdown |
@@ -75,6 +75,15 @@ OpenSlide 使用原生解码库；`openslide-bin` 提供常见平台二进制。
 图块坐标始终使用 level 0。所选层级负责确定实际读取像素和下采样倍数。均匀采样包含网格首尾位置，在超大尺寸下仅产生 O(max_tiles) 个坐标。报告中的 `grid_coverage` 是 **已采样网格数 / 当前层级全部网格数**，不是肿瘤面积或诊断覆盖率。
 
 ## PyTorch 训练入口
+
+**视觉基础模型训练已接入**：DINOv2（约 8600 万参数）的 query/value LoRA 与病理分类头训练、验证集选模、独立测试、适配器加载和工作台训练摘要。复现方法见 [基础模型训练说明](docs/foundation-training.md)。这是通用视觉模型的病理微调；DeepSeek 仍通过 API 提供问答。
+
+```bash
+pip install -e ".[foundation]"
+python -m scripts.train_foundation --manifest data/pathmnist/manifest.csv --split-policy official --epochs 3 --output weights/dinov2-lora
+```
+
+下面的小型 CNN 入口作为独立基线保留，其旧实验记录不代表基础模型结果。
 
 没有可公开的医院数据时，可先运行公开数据实验：
 

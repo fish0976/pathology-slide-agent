@@ -14,6 +14,7 @@ const messages = ref([]),
 const activeRegion = ref(null),
   fileInput = ref(null),
   health = ref(null);
+const training = ref(null);
 const options = ref({
   tile_size: 256,
   max_tiles: 128,
@@ -23,6 +24,9 @@ const options = ref({
 let timer,
   selectionVersion = 0;
 const report = computed(() => current.value?.report);
+const modelMode = computed(
+  () => report.value?.mode || health.value?.model_backend || "demo",
+);
 const processing = computed(() =>
   ["queued", "running"].includes(current.value?.status),
 );
@@ -128,6 +132,12 @@ async function analyze() {
 }
 async function poll() {
   try {
+    if (
+      health.value?.model_backend === "foundation" &&
+      training.value?.state !== "completed"
+    ) {
+      training.value = await api("/training");
+    }
     if (processing.value) {
       const id = current.value.id,
         version = selectionVersion;
@@ -261,9 +271,16 @@ onUnmounted(() => clearTimeout(timer));
       </section>
       <div class="notice">
         <span>ⓘ</span>
-        {{ report?.mode === "torch" ? "本地研究模型" : "演示模式" }} ·
         {{
-          report?.mode === "torch"
+          modelMode === "foundation"
+            ? "视觉基础模型 · LoRA 微调"
+            : modelMode === "torch"
+              ? "本地研究模型"
+              : "演示模式"
+        }}
+        ·
+        {{
+          modelMode !== "demo"
             ? "模型分数尚未经过临床验证。"
             : "颜色纹理分数仅用于演示分析流程，不代表肿瘤概率。"
         }}
@@ -272,6 +289,25 @@ onUnmounted(() => clearTimeout(timer));
       <div v-if="error" class="error" role="alert">
         {{ error
         }}<button @click="error = ''" aria-label="关闭错误提示">×</button>
+      </div>
+      <div v-if="training?.base_model" class="notice">
+        <span>◉</span>
+        DINOv2 病理微调 ·
+        <template v-if="training.state === 'completed'">
+          训练完成 · {{ training.samples?.train }} 张训练图块 · 测试敏感度
+          {{ pct(training.test?.sensitivity) }} · 测试特异度
+          {{ pct(training.test?.specificity) }}。
+        </template>
+        <template v-else-if="training.state === 'failed'"
+          >训练中断，请查看本机训练日志。</template
+        >
+        <template v-else>
+          训练中 · 第 {{ training.epoch || 1 }}/{{ training.epochs }} 轮
+          <template v-if="training.steps">
+            · {{ training.step }}/{{ training.steps }} 步</template
+          >。
+        </template>
+        公开数据小规模实验，不代表医院数据或临床验证结果。
       </div>
       <section class="stats">
         <div>

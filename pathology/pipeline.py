@@ -24,6 +24,7 @@ def analyze(path, output_dir, settings, options, progress=lambda *_: None):
         progress(percent, name)
 
     predictor = load_predictor(settings)
+    use_stain_matching = options["normalize"] and not getattr(predictor, "handles_preprocessing", False)
     with Slide(path) as slide:
         level = options["level"]
         if level >= len(slide.level_dimensions):
@@ -46,7 +47,7 @@ def analyze(path, output_dir, settings, options, progress=lambda *_: None):
             if tile_qc["tissue_fraction"] < 0.1:
                 skipped += 1
             else:
-                processed = normalize_stain(tile) if options["normalize"] else tile
+                processed = normalize_stain(tile) if use_stain_matching else tile
                 score = predictor.predict(processed)
                 tiles.append(
                     {
@@ -77,12 +78,17 @@ def analyze(path, output_dir, settings, options, progress=lambda *_: None):
         step("render_heatmap", "在 level-0 坐标上绘制采样区域叠加层", 90)
         ranked = sorted(tiles, key=lambda t: t["score"], reverse=True)[:8]
         limitations = list(LIMITATIONS)
-        if predictor.mode == "torch":
+        if predictor.mode != "demo":
             limitations[1] = "使用本地 PyTorch 研究模型；本仓库没有提供临床验证或校准证据。"
+        if predictor.mode == "foundation":
+            limitations[1] = (
+                "DINOv2 视觉基础模型的 LoRA 病理微调；小规模图块实验，未验证 WSI 或临床诊断能力。"
+            )
         report = {
             "title": "病理切片研究分析报告",
             "mode": predictor.mode,
             "score_label": predictor.label,
+            "model_provenance": getattr(predictor, "metadata", {}),
             "slide": {
                 "width": slide.dimensions[0],
                 "height": slide.dimensions[1],
@@ -107,7 +113,13 @@ def analyze(path, output_dir, settings, options, progress=lambda *_: None):
             "regions": ranked,
             "tiles": tiles,
             "limitations": limitations,
-            "normalization": "tissue_rgb_moment_matching" if options["normalize"] else "none",
+            "normalization": (
+                "upstream_image_processor_no_stain_matching"
+                if getattr(predictor, "handles_preprocessing", False)
+                else "tissue_rgb_moment_matching"
+                if use_stain_matching
+                else "none"
+            ),
             "options": options,
             "elapsed_seconds": round(time.monotonic() - started, 3),
         }
