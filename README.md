@@ -39,7 +39,7 @@ Windows 也可以运行仓库根目录的 `start.ps1`（首次会安装依赖并
 | 分析工作流 | 读取、质控、切块推理、热力图、报告五步执行轨迹；有界任务队列、进度与错误状态 |
 | 区域证据 | 透明热力图叠加、研究分数排序、原始坐标定位；未采样区域不着色 |
 | 报告 | 包含模式、采样覆盖、参数、指标、区域、局限及工具轨迹的 JSON / Markdown |
-| 研究助手 | 无密钥时本地证据查询；配置密钥后使用千问兼容 Function Calling，最多四轮、每轮三个工具 |
+| 研究助手 | 无密钥时本地证据查询；配置密钥后使用 DeepSeek / 千问兼容工具调用，最多四轮、每轮三个工具 |
 | 训练与评估 | CSV 数据清单、患者级数据集隔离、验证集选模、独立测试集混淆矩阵/准确率/敏感度/特异度/F1 |
 | 测试 | 输入边界、异常链路、透明报告、巨幅切片采样、模型回退、患者泄漏检测、前端构建与 CI |
 
@@ -56,7 +56,7 @@ flowchart LR
     Norm --> Model[Demo / PyTorch]
     Model --> Report[热力图与结构化报告]
     Report --> UI
-    API --> Agent[本地问答 / 千问工具调用]
+    API --> Agent[本地问答 / DeepSeek 工具调用]
     Agent --> Tools[质控查询 / 区域检索 / 报告摘要]
     Tools --> Report
 ```
@@ -104,17 +104,23 @@ python -m uvicorn pathology.main:app --host 127.0.0.1 --port 8000
 
 训练采用与默认推理相同的 RGB 标准化与 128×128 缩放。使用该训练入口生成的权重时，应保持页面「染色标准化」开启。仅加载可信来源的模型权重。
 
-## 可选大模型研究助手
+## DeepSeek 研究助手
 
 默认不调用外部模型。配置后会发送 **当前问题、质控指标、采样统计、区域坐标和分析摘要**；不会发送原始切片、图像或上传文件名。
 
-```powershell
-$env:LLM_BASE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1'
-$env:LLM_MODEL = 'qwen-plus'
-$env:LLM_API_KEY = '你的密钥'
+把 `.env.example` 复制为项目根目录的 `.env`，填写你自己的密钥：
+
+```dotenv
+LLM_BASE_URL=https://api.deepseek.com
+LLM_MODEL=deepseek-flash
+LLM_API_KEY=在本地填写密钥
 ```
 
-Endpoint 和模型名称须与实际百炼账户地域、工作空间及模型权限对应；`.env.example` 只是配置模板，程序不会自动加载 `.env`。不要将患者身份信息写进问题或提交到外部模型。工具为 `get_quality`、`get_regions`、`get_report`，均不接受额外参数。超时、异常结构、无工具证据的回答会回退到本地助手。真实远程服务需要自行提供密钥，仓库测试通过模拟 HTTP 验证工具循环。
+后端自动读取项目根目录 `.env`，显式环境变量优先；修改后需重启服务。真实 `.env` 已被 Git 与 Docker 构建上下文排除，GitHub 上只有空密钥模板。页面显示已配置的服务商，回答显示实际来源与模型；配置成功并不等于每次请求都成功。
+
+首次模型请求强制查询证据工具，随后生成回答。DeepSeek 默认关闭思考模式以减少响应等待；工具循环兼容服务商返回的 `reasoning_content` 字段，该字段不提供给前端或写入报告。认证失败、余额不足、限流、网络异常会显示具体原因，并返回本地证据回答。工具为 `get_quality`、`get_regions`、`get_report`，均不接受额外参数。
+
+如果使用千问，可将地址与模型改回 `https://dashscope.aliyuncs.com/compatible-mode/v1`、`qwen-plus` 并配置对应服务商的密钥。不要把患者身份信息写进问题。此次接入的是问答推理服务；医院病理模型的训练、权重加载和评估属于独立链路，需要提供相应数据、标注与模型结构。详见 [DeepSeek 接入说明](docs/deepseek.md)。
 
 ## 开发、测试与部署
 
@@ -159,6 +165,8 @@ docs/           架构、测试设计与项目讲解
 - [FastAPI：UploadFile](https://fastapi.tiangolo.com/tutorial/request-files/)
 - [PyTorch：权重加载](https://docs.pytorch.org/docs/stable/generated/torch.load)
 - [千问：Function Calling](https://help.aliyun.com/zh/model-studio/qwen-function-calling)
+- [DeepSeek：工具调用](https://api-docs.deepseek.com/guides/tool_calls/)
+- [DeepSeek：思考模式与工具消息](https://api-docs.deepseek.com/guides/thinking_mode/)
 - [Vue 3：快速上手](https://cn.vuejs.org/guide/quick-start)
 
 代码采用 MIT License。合成示例由本项目程序生成，不含患者信息。

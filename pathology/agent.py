@@ -72,19 +72,25 @@ async def answer_question(question, report, settings):
         {"role": "user", "content": question},
     ]
     trace = []
+    failure_reason = "远程模型返回格式不合规或超过工具调用上限"
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             for _ in range(4):
+                payload = {
+                    "model": settings.llm_model,
+                    "messages": messages,
+                    "tools": TOOLS,
+                    "temperature": 0.1,
+                    "max_tokens": 900,
+                    # Obtain evidence before allowing an answer.
+                    "tool_choice": "required" if not trace else "auto",
+                }
+                if settings.llm_provider == "DeepSeek":
+                    payload["thinking"] = {"type": "disabled"}
                 response = await client.post(
                     settings.llm_base_url.rstrip("/") + "/chat/completions",
                     headers={"Authorization": f"Bearer {settings.llm_api_key}"},
-                    json={
-                        "model": settings.llm_model,
-                        "messages": messages,
-                        "tools": TOOLS,
-                        "temperature": 0.1,
-                        "max_tokens": 900,
-                    },
+                    json=payload,
                 )
                 response.raise_for_status()
                 message = response.json()["choices"][0]["message"]
@@ -98,12 +104,23 @@ async def answer_question(question, report, settings):
                     return {
                         "answer": content + "\n仅供研究，不用于诊断。",
                         "source": "llm",
+                        "provider": settings.llm_provider,
+                        "model": settings.llm_model,
                         "tools": trace,
                         "warning": None,
                     }
                 if len(calls) > 3:
                     raise ValueError("超过工具调用上限")
-                messages.append({"role": "assistant", "content": message.get("content"), "tool_calls": calls})
+                assistant_message = {
+                    "role": "assistant",
+                    "content": message.get("content"),
+                    "tool_calls": calls,
+                }
+                # Some DeepSeek variants require this field on subsequent tool turns.
+                # Pass through only to the provider; never display/store it in the report.
+                if isinstance(message.get("reasoning_content"), str):
+                    assistant_message["reasoning_content"] = message["reasoning_content"]
+                messages.append(assistant_message)
                 for call in calls:
                     name = call["function"]["name"]
                     args = json.loads(call["function"].get("arguments", "{}"))
@@ -118,8 +135,20 @@ async def answer_question(question, report, settings):
                         }
                     )
                     trace.append(name)
-    except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError):
+    except httpx.HTTPStatusError as exc:
+        failure_reason = {
+            401: "模型服务认证失败，请检查本地 API 密钥",
+            402: "模型账户余额不足，请在服务商平台检查余额",
+            403: "模型服务拒绝访问，请检查账户权限",
+            404: "模型或服务地址不存在，请检查本地模型配置",
+            429: "模型服务请求过于频繁，请稍后重试",
+        }.get(exc.response.status_code, "模型服务暂时不可用")
+    except httpx.TimeoutException:
+        failure_reason = "模型服务响应超时"
+    except httpx.RequestError:
+        failure_reason = "无法连接模型服务，请检查网络"
+    except (ValueError, KeyError, IndexError, TypeError):
         pass
     fallback = local_answer(question, report)
-    fallback["warning"] = "远程模型不可用或返回格式不合规，已切换到本地证据回答。"
+    fallback["warning"] = failure_reason + "，已切换到本地证据回答。"
     return fallback

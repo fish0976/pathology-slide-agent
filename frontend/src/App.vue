@@ -156,6 +156,10 @@ async function ask(text = question.value) {
     if (version === selectionVersion)
       messages.value.push({
         role: "assistant",
+        provider:
+          answer.source === "llm"
+            ? `${answer.provider} · ${answer.model}`
+            : "本地证据助手",
         text: answer.answer,
         meta: answer.tools.join(" → "),
         warning: answer.warning,
@@ -418,7 +422,9 @@ onUnmounted(() => clearTimeout(timer));
           <div class="panel-heading">
             <h2><span class="spark">✳</span> 研究助手</h2>
             <span class="assistant-type">{{
-              health?.assistant === "llm" ? "大模型工具调用" : "本地证据模式"
+              health?.assistant === "llm"
+                ? `${health.assistant_provider} 已配置`
+                : "本地证据模式"
             }}</span>
           </div>
           <div class="assistant-intro">
@@ -440,7 +446,9 @@ onUnmounted(() => clearTimeout(timer));
               :key="i"
               :class="message.role"
             >
-              <small>{{ message.role === "user" ? "你" : "PathoScope" }}</small>
+              <small>{{
+                message.role === "user" ? "你" : message.provider
+              }}</small>
               <p>{{ message.text }}</p>
               <code v-if="message.meta">{{ message.meta }}</code>
               <p v-if="message.warning" class="warning">

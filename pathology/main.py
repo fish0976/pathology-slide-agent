@@ -78,6 +78,8 @@ def create_app(settings=None):
             "status": "ok",
             "model_backend": settings.model_backend,
             "assistant": "llm" if settings.llm_api_key else "local",
+            "assistant_provider": settings.llm_provider if settings.llm_api_key else None,
+            "assistant_model": settings.llm_model if settings.llm_api_key else None,
         }
 
     @app.get("/api/jobs")

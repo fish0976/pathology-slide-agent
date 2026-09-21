@@ -31,15 +31,20 @@ def test_llm_tool_roundtrip(tmp_path):
         body = json.loads(request.content)
         calls.append(body)
         if len(calls) == 1:
+            assert body["tool_choice"] == "required"
+            assert body["thinking"] == {"type": "disabled"}
             message = {
                 "role": "assistant",
                 "content": None,
+                "reasoning_content": "provider-required opaque field",
                 "tool_calls": [
                     {"id": "c1", "type": "function", "function": {"name": "get_quality", "arguments": "{}"}}
                 ],
             }
         else:
             assert body["messages"][-1]["role"] == "tool"
+            assert body["messages"][-2]["reasoning_content"] == "provider-required opaque field"
+            assert body["tool_choice"] == "auto"
             message = {"content": "演示模式，组织占比 40%。"}
         return httpx.Response(200, json={"choices": [{"message": message}]})
 
@@ -51,6 +56,8 @@ def test_llm_tool_roundtrip(tmp_path):
         answer = asyncio.run(answer_question("质控", REPORT, Settings(data_dir=tmp_path, llm_api_key="test")))
     assert answer["source"] == "llm"
     assert answer["tools"] == ["get_quality"]
+    assert answer["provider"] == "DeepSeek"
+    assert "reasoning_content" not in answer
     assert len(calls) == 2
 
 
@@ -63,6 +70,24 @@ def test_remote_failure_has_local_fallback(tmp_path):
         answer = asyncio.run(answer_question("质控", REPORT, Settings(data_dir=tmp_path, llm_api_key="test")))
     assert answer["source"] == "local"
     assert answer["warning"]
+
+
+@pytest.mark.parametrize("status,text", [(401, "认证失败"), (402, "余额不足"), (429, "过于频繁")])
+def test_provider_errors_are_actionable_and_do_not_echo_body(tmp_path, status, text):
+    factory = httpx.AsyncClient
+    with patch(
+        "pathology.agent.httpx.AsyncClient",
+        side_effect=lambda **kw: factory(
+            transport=httpx.MockTransport(
+                lambda _: httpx.Response(status, json={"error": "secret-provider-body"})
+            ),
+            **kw,
+        ),
+    ):
+        answer = asyncio.run(answer_question("摘要", REPORT, Settings(data_dir=tmp_path, llm_api_key="test")))
+    assert answer["source"] == "local"
+    assert text in answer["warning"]
+    assert "secret-provider-body" not in str(answer)
 
 
 @pytest.mark.parametrize(
