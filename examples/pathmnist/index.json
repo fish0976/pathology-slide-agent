@@ -1,0 +1,96 @@
+{
+  "source": {
+    "dataset": "PathMNIST",
+    "source": "https://zenodo.org/records/10519652/files/pathmnist.npz?download=1",
+    "archive_md5": "a8b06965200029087d5bd730944a56c1",
+    "release": "Zenodo 10519652",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "seed": 42,
+    "split_policy": "official",
+    "patient_ids_available": false,
+    "samples": {
+      "train": 900,
+      "val": 270,
+      "test": 270
+    },
+    "task": "binary adaptation: class 8 vs classes 0-7",
+    "positive_class": "colorectal adenocarcinoma epithelium",
+    "changes": "Stratified subset; lossless PNG export; added binary labels. Original labels retained.",
+    "note": "28x28 research patches; no local hospital data. Patient-level independence cannot be audited from this archive."
+  },
+  "images": [
+    {
+      "file": "images/class_0.png",
+      "official_split": "test",
+      "official_index": 137,
+      "original_label": 0,
+      "original_name": "adipose",
+      "binary_label": 0
+    },
+    {
+      "file": "images/class_1.png",
+      "official_split": "test",
+      "official_index": 77,
+      "original_label": 1,
+      "original_name": "background",
+      "binary_label": 0
+    },
+    {
+      "file": "images/class_2.png",
+      "official_split": "test",
+      "official_index": 17,
+      "original_label": 2,
+      "original_name": "debris",
+      "binary_label": 0
+    },
+    {
+      "file": "images/class_3.png",
+      "official_split": "test",
+      "official_index": 290,
+      "original_label": 3,
+      "original_name": "lymphocytes",
+      "binary_label": 0
+    },
+    {
+      "file": "images/class_4.png",
+      "official_split": "test",
+      "official_index": 201,
+      "original_label": 4,
+      "original_name": "mucus",
+      "binary_label": 0
+    },
+    {
+      "file": "images/class_5.png",
+      "official_split": "test",
+      "official_index": 36,
+      "original_label": 5,
+      "original_name": "smooth muscle",
+      "binary_label": 0
+    },
+    {
+      "file": "images/class_6.png",
+      "official_split": "test",
+      "official_index": 691,
+      "original_label": 6,
+      "original_name": "normal colon mucosa",
+      "binary_label": 0
+    },
+    {
+      "file": "images/class_7.png",
+      "official_split": "test",
+      "official_index": 263,
+      "original_label": 7,
+      "original_name": "cancer-associated stroma",
+      "binary_label": 0
+    },
+    {
+      "file": "images/class_8.png",
+      "official_split": "test",
+      "official_index": 446,
+      "original_label": 8,
+      "original_name": "colorectal adenocarcinoma epithelium",
+      "binary_label": 1
+    }
+  ]
+}

@@ -5,6 +5,7 @@ Run: python scripts/train.py --manifest data/manifest.csv --epochs 5
 
 import argparse
 import csv
+import hashlib
 import json
 from pathlib import Path
 
@@ -15,20 +16,31 @@ from pathology.imaging import normalize_stain
 from pathology.model import build_network
 
 
-def read_manifest(path):
+def read_manifest(path, split_policy="patient"):
+    if split_policy not in {"patient", "official"}:
+        raise ValueError("Unknown split policy")
     with path.open(encoding="utf-8-sig", newline="") as stream:
         rows = list(csv.DictReader(stream))
     if not rows:
         raise ValueError("Manifest is empty")
     patients = {}
+    seen_paths = set()
     for row in rows:
         if row.get("split") not in {"train", "val", "test"} or row.get("label") not in {"0", "1"}:
             raise ValueError("Each row needs split=train/val/test and label=0/1")
         patient = row.get("patient_id", "").strip()
-        if not patient or (patient in patients and patients[patient] != row["split"]):
+        if (split_policy == "patient" and not patient) or (
+            patient and patient in patients and patients[patient] != row["split"]
+        ):
             raise ValueError("Missing patient_id or patient leakage across splits")
-        patients[patient] = row["split"]
+        if split_policy == "official" and row.get("split_policy") != "official":
+            raise ValueError("Official split mode requires explicit split_policy=official on every row")
+        if patient:
+            patients[patient] = row["split"]
         row["path"] = str((path.parent / row["path"]).resolve())
+        if row["path"] in seen_paths:
+            raise ValueError("Duplicate image path in manifest")
+        seen_paths.add(row["path"])
     for split in ("train", "val", "test"):
         if {r["label"] for r in rows if r["split"] == split} != {"0", "1"}:
             raise ValueError(f"{split} must contain both classes")
@@ -72,11 +84,15 @@ def main():
     parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--output", type=Path, default=Path("weights/model.pt"))
+    parser.add_argument("--split-policy", choices=["patient", "official"], default="patient")
+    parser.add_argument("--balance-classes", action="store_true")
+    parser.add_argument("--threads", type=int, default=2)
     args = parser.parse_args()
-    if args.epochs < 1 or args.batch_size < 1:
-        parser.error("epochs and batch-size must be positive")
+    if args.epochs < 1 or args.batch_size < 1 or args.threads < 1:
+        parser.error("epochs, batch-size and threads must be positive")
     torch.manual_seed(42)
-    rows = read_manifest(args.manifest)
+    torch.set_num_threads(args.threads)
+    rows = read_manifest(args.manifest, args.split_policy)
 
     class Patches(Dataset):
         def __init__(self, split):
@@ -98,8 +114,12 @@ def main():
     }
     net = build_network()
     optimizer = torch.optim.Adam(net.parameters(), lr=0.001)
-    criterion = torch.nn.BCEWithLogitsLoss()
+    train_rows = [r for r in rows if r["split"] == "train"]
+    positives = sum(r["label"] == "1" for r in train_rows)
+    positive_weight = (len(train_rows) - positives) / positives if args.balance_classes else 1.0
+    criterion = torch.nn.BCEWithLogitsLoss(pos_weight=torch.tensor([positive_weight]))
     best_loss = float("inf")
+    history = []
     args.output.parent.mkdir(parents=True, exist_ok=True)
     for epoch in range(args.epochs):
         net.train()
@@ -117,7 +137,8 @@ def main():
         if val_loss < best_loss:
             best_loss = val_loss
             torch.save(net.state_dict(), args.output)
-        print(json.dumps({"epoch": epoch + 1, "val_loss": val_loss}))
+        history.append({"epoch": epoch + 1, "val_loss": val_loss})
+        print(json.dumps(history[-1]), flush=True)
     net.load_state_dict(torch.load(args.output, map_location="cpu", weights_only=True))
     net.eval()
     labels, scores = [], []
@@ -130,7 +151,16 @@ def main():
         unit="patch",
         model="small-cnn-baseline",
         seed=42,
-        note="Independent patient split; patch metrics are not clinical validation.",
+        split_policy=args.split_policy,
+        patient_ids_available=all(bool(r.get("patient_id")) for r in rows),
+        data_origins=sorted({r.get("data_origin", "unspecified") for r in rows}),
+        samples={split: sum(r["split"] == split for r in rows) for split in ("train", "val", "test")},
+        manifest_sha256=hashlib.sha256(args.manifest.read_bytes()).hexdigest(),
+        weights_sha256=hashlib.sha256(args.output.read_bytes()).hexdigest(),
+        epochs=args.epochs,
+        positive_weight=positive_weight,
+        history=history,
+        note="Measured patch metrics only; not clinical validation. Missing patient IDs prevent patient-level split auditing.",
     )
     args.output.with_suffix(".metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
     print(json.dumps(metrics, indent=2))

@@ -10,6 +10,10 @@ __pycache__/
 !.env.example
 data/
 weights/
+private_data/
+hospital_data/
+*.npz
+*.safetensors
 node_modules/
 frontend/dist/
 *.svs

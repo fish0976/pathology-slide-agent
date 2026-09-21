@@ -1,0 +1,82 @@
+{
+  "experiment": "public-pathmnist-small-cnn",
+  "dataset": {
+    "dataset": "PathMNIST",
+    "source": "https://zenodo.org/records/10519652/files/pathmnist.npz?download=1",
+    "archive_md5": "a8b06965200029087d5bd730944a56c1",
+    "release": "Zenodo 10519652",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "seed": 42,
+    "split_policy": "official",
+    "patient_ids_available": false,
+    "samples": {
+      "train": 900,
+      "val": 270,
+      "test": 270
+    },
+    "task": "binary adaptation: class 8 vs classes 0-7",
+    "positive_class": "colorectal adenocarcinoma epithelium",
+    "changes": "Stratified subset; lossless PNG export; added binary labels. Original labels retained.",
+    "note": "28x28 research patches; no local hospital data. Patient-level independence cannot be audited from this archive."
+  },
+  "metrics": {
+    "n": 270,
+    "threshold": 0.5,
+    "tp": 0,
+    "tn": 240,
+    "fp": 0,
+    "fn": 30,
+    "accuracy": 0.8888888888888888,
+    "sensitivity": 0.0,
+    "specificity": 1.0,
+    "precision": null,
+    "f1": 0.0,
+    "unit": "patch",
+    "model": "small-cnn-baseline",
+    "seed": 42,
+    "split_policy": "official",
+    "patient_ids_available": false,
+    "data_origins": [
+      "public_pathmnist"
+    ],
+    "samples": {
+      "train": 900,
+      "val": 270,
+      "test": 270
+    },
+    "manifest_sha256": "b8ea2148206f18d6dc87a5aed90f4f39ac91a37291b60d26b8c97242fa56aeea",
+    "weights_sha256": "3aca5bdc4eb6760786e3fc0f76e108f7d48841ef1ea41f9aabb6be9e13e838fc",
+    "epochs": 5,
+    "positive_weight": 8.0,
+    "history": [
+      {
+        "epoch": 1,
+        "val_loss": 1.2319838771113643
+      },
+      {
+        "epoch": 2,
+        "val_loss": 1.2343760066562228
+      },
+      {
+        "epoch": 3,
+        "val_loss": 1.231524654670998
+      },
+      {
+        "epoch": 4,
+        "val_loss": 1.2306967311435275
+      },
+      {
+        "epoch": 5,
+        "val_loss": 1.2307038625081381
+      }
+    ],
+    "note": "Measured patch metrics only; not clinical validation. Missing patient IDs prevent patient-level split auditing."
+  },
+  "environment": {
+    "python": "3.12.14",
+    "torch": "2.14.0+cpu",
+    "numpy": "2.5.3"
+  },
+  "clinical_validation": false
+}

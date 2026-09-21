@@ -4,7 +4,7 @@
 
 **Python / FastAPI / PyTorch / OpenSlide / Vue 3 / SQLite / Docker**
 
-> 当前仓库是可复现的工程实现。默认使用合成切片和颜色纹理规则演示，不包含医院患者数据、病理大模型权重、医院合作证明或临床验证结果。分数不是肿瘤概率，系统不能用于诊断。
+> 医院原始数据与内部训练资料不公开。本仓库提供可复现工程代码、带来源与许可的公开 PathMNIST 样本，以及实际运行的轻量训练记录。默认工作台使用规则演示评分，DeepSeek 负责证据问答；这些结果不构成临床验证。
 
 ## 快速体验
 
@@ -41,6 +41,7 @@ Windows 也可以运行仓库根目录的 `start.ps1`（首次会安装依赖并
 | 报告 | 包含模式、采样覆盖、参数、指标、区域、局限及工具轨迹的 JSON / Markdown |
 | 研究助手 | 无密钥时本地证据查询；配置密钥后使用 DeepSeek / 千问兼容工具调用，最多四轮、每轮三个工具 |
 | 训练与评估 | CSV 数据清单、患者级数据集隔离、验证集选模、独立测试集混淆矩阵/准确率/敏感度/特异度/F1 |
+| 公开数据 | 官方 PathMNIST 下载与校验、保留原划分的分层子集、九张授权样本、来源和论文引用 |
 | 测试 | 输入边界、异常链路、透明报告、巨幅切片采样、模型回退、患者泄漏检测、前端构建与 CI |
 
 ## 架构
@@ -74,6 +75,16 @@ OpenSlide 使用原生解码库；`openslide-bin` 提供常见平台二进制。
 图块坐标始终使用 level 0。所选层级负责确定实际读取像素和下采样倍数。均匀采样包含网格首尾位置，在超大尺寸下仅产生 O(max_tiles) 个坐标。报告中的 `grid_coverage` 是 **已采样网格数 / 当前层级全部网格数**，不是肿瘤面积或诊断覆盖率。
 
 ## PyTorch 训练入口
+
+没有可公开的医院数据时，可先运行公开数据实验：
+
+```bash
+pip install -e ".[ml]"
+python scripts/prepare_pathmnist.py --download
+python scripts/train.py --manifest data/pathmnist/manifest.csv --split-policy official --balance-classes --epochs 5 --output weights/pathmnist.pt
+```
+
+参见 [数据来源、许可及复现说明](docs/public-data.md) 与 [公开样本及实测记录](examples/pathmnist/README.md)。这里使用公开病理图块，不属于自有医院训练成果。医院数据的通用清单训练方式如下：
 
 ```bash
 pip install -e ".[ml]"
@@ -169,4 +180,4 @@ docs/           架构、测试设计与项目讲解
 - [DeepSeek：思考模式与工具消息](https://api-docs.deepseek.com/guides/thinking_mode/)
 - [Vue 3：快速上手](https://cn.vuejs.org/guide/quick-start)
 
-代码采用 MIT License。合成示例由本项目程序生成，不含患者信息。
+代码采用 MIT License。公开 PathMNIST 样本单独采用 CC BY 4.0，详见 [第三方数据声明](THIRD_PARTY_NOTICES.md)。合成示例由本项目程序生成。
